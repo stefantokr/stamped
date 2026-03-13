@@ -99,8 +99,8 @@ export default function UserProfileSheet({ userId, myId, onClose }) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white rounded-t-3xl z-50 shadow-2xl pb-10">
+      <div className="fixed inset-0 bg-black/50 z-40 animate-fade-in" onClick={onClose} />
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white rounded-t-3xl z-50 shadow-2xl pb-10 animate-slide-up">
 
         {/* Handle */}
         <div className="flex justify-center pt-3 pb-2">

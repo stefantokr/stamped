@@ -84,7 +84,7 @@ export default function ChatSheet({ conversationId, otherUser, myId, onClose }) 
   }
 
   return (
-    <div className="fixed inset-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-stone-50 z-50 flex flex-col">
+    <div className="fixed inset-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-stone-50 z-50 flex flex-col animate-slide-in-right">
 
       {/* Header */}
       <div className="flex items-center gap-3 px-4 pt-12 pb-4 bg-white border-b border-gray-100 flex-shrink-0 shadow-sm">

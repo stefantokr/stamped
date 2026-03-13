@@ -155,9 +155,9 @@ export default function FriendsSheet({ onClose, onPendingChange }) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50 z-40 animate-fade-in" onClick={onClose} />
 
-      <div className="fixed inset-x-0 bottom-0 top-12 max-w-[430px] mx-auto bg-stone-50 z-50 rounded-t-3xl flex flex-col shadow-2xl overflow-hidden">
+      <div className="fixed inset-x-0 bottom-0 top-12 max-w-[430px] mx-auto bg-stone-50 z-50 rounded-t-3xl flex flex-col shadow-2xl overflow-hidden animate-slide-up">
 
         {/* Header */}
         <div className="flex items-center gap-3 px-5 pt-5 pb-3 bg-white border-b border-gray-100 flex-shrink-0">

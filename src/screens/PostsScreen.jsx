@@ -92,8 +92,8 @@ function ComposeSheet({ userId, onClose, onPosted }) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
-      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white rounded-t-3xl z-50 shadow-2xl pb-10 max-h-[90vh] flex flex-col">
+      <div className="fixed inset-0 bg-black/40 z-40 animate-fade-in" onClick={onClose} />
+      <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[430px] bg-white rounded-t-3xl z-50 shadow-2xl pb-10 max-h-[90vh] flex flex-col animate-slide-up">
         <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
           <div className="w-10 h-1 bg-gray-200 rounded-full" />
         </div>
@@ -206,6 +206,7 @@ export default function PostsScreen({ user }) {
   const [showFriends, setShowFriends] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [viewingProfile, setViewingProfile] = useState(null) // userId
+  const [likedAnim, setLikedAnim] = useState({}) // postId -> bool for heart pop
 
   const userId = user?.id
 
@@ -243,6 +244,10 @@ export default function PostsScreen({ user }) {
     const isLiked = !!liked[postId]
     setLiked(prev => ({ ...prev, [postId]: !isLiked }))
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes_count: p.likes_count + (isLiked ? -1 : 1) } : p))
+    if (!isLiked) {
+      setLikedAnim(prev => ({ ...prev, [postId]: true }))
+      setTimeout(() => setLikedAnim(prev => ({ ...prev, [postId]: false })), 400)
+    }
     try { await toggleLike(postId, isLiked) }
     catch {
       setLiked(prev => ({ ...prev, [postId]: isLiked }))
@@ -362,11 +367,13 @@ export default function PostsScreen({ user }) {
             </div>
           </button>
 
-          {posts.map(post => {
+          {posts.map((post, idx) => {
             const isOwn = post.user_id === userId
             const isConfirming = confirmDeleteId === post.id
             return (
-              <div key={post.id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-50">
+              <div key={post.id}
+                className="bg-white rounded-2xl overflow-hidden shadow-sm border border-gray-50 animate-fade-in-up"
+                style={{ animationDelay: `${idx * 60}ms` }}>
 
                 {/* Post header */}
                 <div className="flex items-center justify-between px-3.5 pt-3.5 pb-2.5">
@@ -439,7 +446,9 @@ export default function PostsScreen({ user }) {
                   )}
                   <div className="flex items-center gap-4">
                     <button onClick={() => handleLike(post.id)} className="flex items-center gap-1.5">
-                      <Heart size={20} className={liked[post.id] ? 'fill-rose-500 text-rose-500' : 'text-gray-300'} />
+                      <Heart size={20}
+                        className={`transition-colors ${liked[post.id] ? 'fill-rose-500 text-rose-500' : 'text-gray-300'} ${likedAnim[post.id] ? 'animate-heart-pop' : ''}`}
+                      />
                       <span className={`text-sm font-medium ${liked[post.id] ? 'text-rose-500' : 'text-gray-400'}`}>
                         {post.likes_count}
                       </span>
