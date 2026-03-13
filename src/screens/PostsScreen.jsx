@@ -9,7 +9,7 @@ import {
 import CommentsSheet from './CommentsSheet'
 import FriendsSheet from './FriendsSheet'
 import UserProfileSheet from './UserProfileSheet'
-import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh'
+import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh.jsx'
 import { haptic } from '../utils/haptic'
 
 const EMOJIS = ['☕', '🧋', '🍵', '🥐', '🍰', '🏆', '✨', '🌟', '💛', '🫶']

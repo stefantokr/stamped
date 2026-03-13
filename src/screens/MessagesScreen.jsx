@@ -3,7 +3,7 @@ import { Trash2, X, Check } from 'lucide-react'
 import Avatar from '../components/Avatar'
 import { getConversations, deleteConversation } from '../lib/api'
 import ChatSheet from './ChatSheet'
-import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh'
+import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh.jsx'
 
 function timeAgo(ts) {
   if (!ts) return ''

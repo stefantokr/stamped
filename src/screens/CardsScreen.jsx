@@ -5,7 +5,7 @@ import Avatar from '../components/Avatar'
 import ProfileSheet from './ProfileSheet'
 import NotificationsScreen from './NotificationsScreen'
 import SettingsScreen from './SettingsScreen'
-import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh'
+import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh.jsx'
 
 function MiniStampGrid({ stamps, target }) {
   return (
