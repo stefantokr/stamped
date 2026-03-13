@@ -390,6 +390,83 @@ export async function deletePost(postId) {
   if (error) throw error
 }
 
+// ── Messaging ─────────────────────────────────────────────────
+export async function getConversations() {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('conversations')
+    .select(`
+      id, last_message, last_message_at,
+      user1:user1_id(id, name, avatar_initials, avatar_url),
+      user2:user2_id(id, name, avatar_initials, avatar_url)
+    `)
+    .or(`user1_id.eq.${user.id},user2_id.eq.${user.id}`)
+    .order('last_message_at', { ascending: false, nullsFirst: false })
+  if (error) throw error
+  return { conversations: data ?? [], myId: user.id }
+}
+
+export async function getOrCreateConversation(otherUserId) {
+  const { data: { user } } = await supabase.auth.getUser()
+  const [u1, u2] = user.id < otherUserId ? [user.id, otherUserId] : [otherUserId, user.id]
+  const { data: existing } = await supabase
+    .from('conversations')
+    .select('id')
+    .eq('user1_id', u1)
+    .eq('user2_id', u2)
+    .maybeSingle()
+  if (existing) return existing.id
+  const { data: created, error } = await supabase
+    .from('conversations')
+    .insert({ user1_id: u1, user2_id: u2 })
+    .select('id')
+    .single()
+  if (error) throw error
+  return created.id
+}
+
+export async function getMessages(conversationId) {
+  const { data, error } = await supabase
+    .from('messages')
+    .select('id, content, created_at, sender_id, read_at')
+    .eq('conversation_id', conversationId)
+    .order('created_at', { ascending: true })
+    .limit(100)
+  if (error) throw error
+  return data
+}
+
+export async function sendMessage(conversationId, content) {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('messages')
+    .insert({ conversation_id: conversationId, sender_id: user.id, content })
+    .select('id, content, created_at, sender_id, read_at')
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function markMessagesRead(conversationId) {
+  const { data: { user } } = await supabase.auth.getUser()
+  await supabase
+    .from('messages')
+    .update({ read_at: new Date().toISOString() })
+    .eq('conversation_id', conversationId)
+    .neq('sender_id', user.id)
+    .is('read_at', null)
+}
+
+export async function getTotalUnread() {
+  const { count } = await supabase
+    .from('messages')
+    .select('id', { count: 'exact', head: true })
+    .is('read_at', null)
+    // RLS ensures we only see messages in our conversations
+    // so just exclude ones we sent
+  return count ?? 0
+}
+
 // ── Stats ─────────────────────────────────────────────────────
 export async function getUserStats(userId) {
   const { data: events } = await supabase

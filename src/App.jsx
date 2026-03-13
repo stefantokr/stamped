@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
-import { getProfile, getUserStats, signOut } from './lib/api'
+import { getProfile, getUserStats, signOut, getTotalUnread } from './lib/api'
 import BottomNav from './components/BottomNav'
 import AuthScreen from './screens/AuthScreen'
 import CardsScreen from './screens/CardsScreen'
@@ -8,6 +8,7 @@ import CardDetail from './screens/CardDetail'
 import QRScreen from './screens/QRScreen'
 import DiscoverScreen from './screens/DiscoverScreen'
 import PostsScreen from './screens/PostsScreen'
+import MessagesScreen from './screens/MessagesScreen'
 
 function StatusBar() {
   return (
@@ -41,12 +42,13 @@ function LoadingScreen() {
 }
 
 export default function App() {
-  const [authState, setAuthState] = useState('loading') // 'loading' | 'authed' | 'guest'
+  const [authState, setAuthState] = useState('loading')
   const [session, setSession] = useState(null)
   const [profile, setProfile] = useState(null)
   const [stats, setStats] = useState(null)
   const [screen, setScreen] = useState('cards')
   const [selectedCard, setSelectedCard] = useState(null)
+  const [unreadMessages, setUnreadMessages] = useState(0)
 
   // Listen for auth changes
   useEffect(() => {
@@ -70,7 +72,6 @@ export default function App() {
       try {
         const p = await getProfile(session.user.id).catch(() => null)
         const s = await getUserStats(session.user.id).catch(() => ({ totalStamps: 0, rewardsEarned: 0, activeCards: 0 }))
-        // Build a fallback profile from session data if DB profile is missing
         setProfile(p ?? {
           id: session.user.id,
           name: session.user.user_metadata?.name ?? session.user.email.split('@')[0],
@@ -85,9 +86,21 @@ export default function App() {
     load()
   }, [session])
 
+  // Poll unread message count every 30s
+  useEffect(() => {
+    if (!session?.user) return
+    function fetchUnread() {
+      getTotalUnread().then(setUnreadMessages).catch(() => {})
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 30000)
+    return () => clearInterval(interval)
+  }, [session])
+
   function navigate(newScreen) {
     setScreen(newScreen)
     setSelectedCard(null)
+    if (newScreen === 'messages') setUnreadMessages(0)
   }
 
   function handleCardClaimed() {
@@ -143,12 +156,19 @@ export default function App() {
           {screen === 'posts' && (
             <PostsScreen user={profile ?? { id: session.user.id }} />
           )}
+          {screen === 'messages' && (
+            <MessagesScreen user={profile ?? { id: session.user.id }} />
+          )}
           {screen === 'discover' && (
             <DiscoverScreen user={profile ?? { id: session.user.id }} />
           )}
         </div>
 
-        <BottomNav current={screen} onChange={navigate} />
+        <BottomNav
+          current={screen}
+          onChange={navigate}
+          badges={{ messages: unreadMessages }}
+        />
       </div>
     </div>
   )

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, UserPlus, UserCheck, UserX, Clock } from 'lucide-react'
+import { X, UserPlus, UserCheck, UserX, Clock, MessageCircle } from 'lucide-react'
 import Avatar from '../components/Avatar'
 import {
   getProfile,
@@ -7,13 +7,16 @@ import {
   sendFriendRequest,
   respondToRequest,
   withdrawRequest,
+  getOrCreateConversation,
 } from '../lib/api'
+import ChatSheet from './ChatSheet'
 
 export default function UserProfileSheet({ userId, myId, onClose }) {
   const [profile, setProfile] = useState(null)
   const [friendship, setFriendship] = useState(null)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [acting, setActing] = useState(false)
+  const [chat, setChat] = useState(null) // { conversationId, otherUser }
 
   useEffect(() => {
     async function load() {
@@ -33,11 +36,10 @@ export default function UserProfileSheet({ userId, myId, onClose }) {
     load()
   }, [userId])
 
-  // Derive friendship state
-  const isAccepted   = friendship?.status === 'accepted'
-  const isPending    = friendship?.status === 'pending'
-  const iSentIt      = isPending && friendship?.requester_id === myId
-  const theySentIt   = isPending && friendship?.addressee_id === myId
+  const isAccepted = friendship?.status === 'accepted'
+  const isPending  = friendship?.status === 'pending'
+  const iSentIt    = isPending && friendship?.requester_id === myId
+  const theySentIt = isPending && friendship?.addressee_id === myId
 
   async function handleAdd() {
     setActing(true)
@@ -75,6 +77,26 @@ export default function UserProfileSheet({ userId, myId, onClose }) {
     finally { setActing(false) }
   }
 
+  async function handleMessage() {
+    setActing(true)
+    try {
+      const convId = await getOrCreateConversation(userId)
+      setChat({ conversationId: convId, otherUser: profile })
+    } catch (e) { console.error(e) }
+    finally { setActing(false) }
+  }
+
+  if (chat) {
+    return (
+      <ChatSheet
+        conversationId={chat.conversationId}
+        otherUser={chat.otherUser}
+        myId={myId}
+        onClose={() => setChat(null)}
+      />
+    )
+  }
+
   return (
     <>
       <div className="fixed inset-0 bg-black/50 z-40" onClick={onClose} />
@@ -100,65 +122,55 @@ export default function UserProfileSheet({ userId, myId, onClose }) {
           </div>
         ) : profile ? (
           <div className="flex flex-col items-center px-6 pb-2">
-            {/* Avatar */}
             <Avatar profile={profile} size={72} />
-
-            {/* Name & username */}
             <h2 className="text-xl font-bold text-gray-900 mt-3">{profile.name}</h2>
             {profile.username && (
               <p className="text-sm text-gray-400 mt-0.5">@{profile.username}</p>
             )}
-
-            {/* Bio */}
             {profile.bio && (
               <p className="text-sm text-gray-600 text-center mt-3 leading-relaxed">{profile.bio}</p>
             )}
 
-            {/* Friend action button(s) */}
-            <div className="w-full mt-6 flex gap-3">
-              {isAccepted ? (
-                <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-50 text-emerald-600 font-semibold text-sm">
-                  <UserCheck size={18} />
-                  Friends
-                </div>
-              ) : theySentIt ? (
-                <>
-                  <button
-                    onClick={handleAccept}
-                    disabled={acting}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-amber-500 text-white font-bold text-sm disabled:opacity-50 active:scale-95 transition-transform"
-                  >
-                    <UserPlus size={18} />
-                    Accept
+            {/* Buttons */}
+            <div className="w-full mt-6 flex flex-col gap-3">
+
+              {/* Friend button */}
+              <div className="flex gap-3">
+                {isAccepted ? (
+                  <div className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-emerald-50 text-emerald-600 font-semibold text-sm">
+                    <UserCheck size={18} />
+                    Friends
+                  </div>
+                ) : theySentIt ? (
+                  <>
+                    <button onClick={handleAccept} disabled={acting}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-amber-500 text-white font-bold text-sm disabled:opacity-50 active:scale-95 transition-transform">
+                      <UserPlus size={18} /> Accept
+                    </button>
+                    <button onClick={handleDecline} disabled={acting}
+                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-sm disabled:opacity-50 active:scale-95 transition-transform">
+                      <UserX size={18} /> Decline
+                    </button>
+                  </>
+                ) : iSentIt ? (
+                  <button onClick={handleWithdraw} disabled={acting}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-sm disabled:opacity-50 active:scale-95 transition-transform">
+                    <Clock size={18} /> Request Sent — Cancel
                   </button>
-                  <button
-                    onClick={handleDecline}
-                    disabled={acting}
-                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-sm disabled:opacity-50 active:scale-95 transition-transform"
-                  >
-                    <UserX size={18} />
-                    Decline
+                ) : (
+                  <button onClick={handleAdd} disabled={acting}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-amber-500 text-white font-bold text-sm disabled:opacity-50 active:scale-95 transition-transform">
+                    <UserPlus size={18} /> Add Friend
                   </button>
-                </>
-              ) : iSentIt ? (
-                <button
-                  onClick={handleWithdraw}
-                  disabled={acting}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-100 text-gray-500 font-semibold text-sm disabled:opacity-50 active:scale-95 transition-transform"
-                >
-                  <Clock size={18} />
-                  Request Sent — Cancel
-                </button>
-              ) : (
-                <button
-                  onClick={handleAdd}
-                  disabled={acting}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl bg-amber-500 text-white font-bold text-sm disabled:opacity-50 active:scale-95 transition-transform"
-                >
-                  <UserPlus size={18} />
-                  Add Friend
-                </button>
-              )}
+                )}
+              </div>
+
+              {/* Message button — always visible */}
+              <button onClick={handleMessage} disabled={acting}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl bg-gray-100 text-gray-700 font-semibold text-sm disabled:opacity-50 active:scale-95 transition-transform">
+                <MessageCircle size={18} />
+                {acting ? 'Opening…' : 'Message'}
+              </button>
             </div>
           </div>
         ) : (
