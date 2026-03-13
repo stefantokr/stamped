@@ -69,13 +69,17 @@ export default function CardsScreen({ user, onCardSelect, onSignOut, onProfileUp
   const rewardReady = cards.filter(c => c.stamps >= c.cafe.stamp_target)
   const firstName = user.name?.split(' ')[0] ?? 'there'
 
+  const hour = new Date().getHours()
+  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const greetingEmoji = hour < 12 ? '☀️' : hour < 17 ? '🌤️' : '🌙'
+
   return (
     <div className="px-4 pt-4 pb-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <p className="text-sm text-gray-400 font-medium">Good morning,</p>
-          <h1 className="text-2xl font-bold text-gray-900">{firstName} ☀️</h1>
+          <p className="text-sm text-gray-400 font-medium">{greeting},</p>
+          <h1 className="text-2xl font-bold text-gray-900">{firstName} {greetingEmoji}</h1>
         </div>
         <div className="flex items-center gap-2">
           <button
