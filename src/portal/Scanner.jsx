@@ -53,7 +53,7 @@ export default function Scanner({ cafe, onBack }) {
           async (decodedText) => {
             if (processingRef.current) return
             if (!decodedText.startsWith('STAMPED:')) {
-              setResult({ type: 'error', title: 'Not a Stamped QR', subtitle: 'Ask the customer to open their app' })
+              setResult({ type: 'error', title: 'Not a Beened QR', subtitle: 'Ask the customer to open their app' })
               return
             }
             const userId = decodedText.replace('STAMPED:', '')
@@ -98,7 +98,7 @@ export default function Scanner({ cafe, onBack }) {
       {/* Header */}
       <div className="px-5 pt-12 pb-5 flex items-center justify-between">
         <div>
-          <p className="text-gray-400 text-sm">Stamped Portal</p>
+          <p className="text-gray-400 text-sm">Beened Portal</p>
           <h1 className="text-white text-xl font-bold mt-0.5">{cafe.name}</h1>
         </div>
         <div className="text-right">

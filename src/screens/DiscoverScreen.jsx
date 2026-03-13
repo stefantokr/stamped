@@ -189,7 +189,7 @@ function NearbyTab({ userId }) {
               <Popup>
                 <div>
                   <p className="font-semibold text-sm">{cafe.name}</p>
-                  <p className="text-xs text-amber-600 font-medium">On Stamped ✦</p>
+                  <p className="text-xs text-amber-600 font-medium">On Beened ✦</p>
                   {cafe.distance != null && <p className="text-xs text-gray-500">{formatDist(cafe.distance)} away</p>}
                 </div>
               </Popup>
@@ -213,7 +213,7 @@ function NearbyTab({ userId }) {
       <div className="flex items-center gap-4 px-1">
         <div className="flex items-center gap-1.5">
           <div className="w-4 h-4 rounded-full bg-amber-500 border-2 border-white shadow-sm" />
-          <span className="text-xs text-gray-500">On Stamped</span>
+          <span className="text-xs text-gray-500">On Beened</span>
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3.5 h-3.5 rounded-full bg-gray-400 border-2 border-white shadow-sm" />
@@ -280,8 +280,8 @@ function NearbyTab({ userId }) {
       {otherStamped.length > 0 && (
         <section>
           <div className="flex items-center gap-2 mb-2">
-            <h3 className="text-sm font-semibold text-gray-900">On Stamped nearby</h3>
-            <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">✦ Stamped</span>
+            <h3 className="text-sm font-semibold text-gray-900">On Beened nearby</h3>
+            <span className="text-xs bg-amber-100 text-amber-700 font-semibold px-2 py-0.5 rounded-full">✦ Beened</span>
           </div>
           <div className="flex flex-col gap-2">
             {otherStamped.map(cafe => (

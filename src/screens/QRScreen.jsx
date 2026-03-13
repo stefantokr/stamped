@@ -41,7 +41,7 @@ export default function QRScreen({ user, stats }) {
 
         <div className="flex items-center gap-1.5 bg-white/20 rounded-full px-3 py-1.5">
           <Shield size={12} className="text-amber-100" />
-          <span className="text-xs text-amber-100 font-medium">Verified Stamped account</span>
+          <span className="text-xs text-amber-100 font-medium">Verified Beened account</span>
         </div>
       </div>
 

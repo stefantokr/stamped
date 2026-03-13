@@ -29,7 +29,7 @@ function PortalAuth({ onAuthed }) {
       <div className="text-center mb-10">
         <div className="text-5xl mb-3">☕</div>
         <h1 className="text-3xl font-bold text-white">Staff Portal</h1>
-        <p className="text-gray-400 text-sm mt-1">Stamped · Cafe management</p>
+        <p className="text-gray-400 text-sm mt-1">Beened · Cafe management</p>
       </div>
 
       <div className="bg-gray-900 rounded-3xl border border-gray-800 p-6">
@@ -83,7 +83,7 @@ function CafeSelect({ onSelect, onSignOut }) {
     <div className="min-h-screen bg-gray-950 flex flex-col px-5 pt-12 pb-8">
       <div className="flex items-start justify-between mb-8">
         <div>
-          <p className="text-gray-400 text-sm">Stamped Portal</p>
+          <p className="text-gray-400 text-sm">Beened Portal</p>
           <h1 className="text-white text-2xl font-bold mt-1">Select your cafe</h1>
         </div>
         <button onClick={onSignOut} className="text-gray-500 p-2">

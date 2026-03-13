@@ -37,7 +37,7 @@ export default function AuthScreen() {
       {/* Logo */}
       <div className="text-center mb-10">
         <div className="text-5xl mb-3">☕</div>
-        <h1 className="text-3xl font-bold text-gray-900">Stamped</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Beened</h1>
         <p className="text-gray-400 text-sm mt-1">Your digital coffee loyalty wallet</p>
       </div>
 
