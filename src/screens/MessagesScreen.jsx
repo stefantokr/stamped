@@ -3,6 +3,7 @@ import { Trash2, X, Check } from 'lucide-react'
 import Avatar from '../components/Avatar'
 import { getConversations, deleteConversation } from '../lib/api'
 import ChatSheet from './ChatSheet'
+import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh'
 
 function timeAgo(ts) {
   if (!ts) return ''
@@ -50,6 +51,8 @@ export default function MessagesScreen({ user, initialConversation }) {
     load() // refresh to update last message / unread
   }
 
+  const { pullProgress, refreshing } = usePullToRefresh(load)
+
   async function handleDelete(conversationId) {
     setDeleting(true)
     try {
@@ -65,6 +68,8 @@ export default function MessagesScreen({ user, initialConversation }) {
 
   return (
     <div className="px-4 pt-4 pb-4">
+
+      <PullIndicator pullProgress={pullProgress} refreshing={refreshing} />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-5">

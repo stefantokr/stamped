@@ -103,10 +103,11 @@ export async function claimReward(userId, cafeId) {
 }
 
 // ── Profile update ────────────────────────────────────────────
-export async function updateProfile({ name, bio, avatarUrl }) {
+export async function updateProfile({ name, bio, avatarUrl, isPrivate }) {
   const { data: { user } } = await supabase.auth.getUser()
   const updates = { name, bio }
   if (avatarUrl !== undefined) updates.avatar_url = avatarUrl
+  if (isPrivate !== undefined) updates.is_private = isPrivate
   const { data, error } = await supabase
     .from('profiles')
     .update(updates)
@@ -468,12 +469,12 @@ export async function deleteConversation(conversationId) {
 }
 
 export async function getTotalUnread() {
+  const { data: { user } } = await supabase.auth.getUser()
   const { count } = await supabase
     .from('messages')
     .select('id', { count: 'exact', head: true })
     .is('read_at', null)
-    // RLS ensures we only see messages in our conversations
-    // so just exclude ones we sent
+    .neq('sender_id', user.id) // don't count our own sent messages
   return count ?? 0
 }
 
@@ -499,4 +500,87 @@ export async function getUserStats(userId) {
     rewardsEarned: claims?.length ?? 0,
     activeCards: cards?.length ?? 0,
   }
+}
+
+// ── Block / Unblock ────────────────────────────────────────────
+export async function blockUser(userId) {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('blocked_users')
+    .insert({ blocker_id: user.id, blocked_id: userId })
+  if (error) throw error
+}
+
+export async function unblockUser(userId) {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('blocked_users')
+    .delete()
+    .eq('blocker_id', user.id)
+    .eq('blocked_id', userId)
+  if (error) throw error
+}
+
+export async function getBlockStatus(userId) {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data } = await supabase
+    .from('blocked_users')
+    .select('id')
+    .eq('blocker_id', user.id)
+    .eq('blocked_id', userId)
+    .maybeSingle()
+  return !!data
+}
+
+// ── Reports ───────────────────────────────────────────────────
+export async function reportContent({ reportedUserId, postId, reason }) {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { error } = await supabase
+    .from('reports')
+    .insert({
+      reporter_id: user.id,
+      reported_user_id: reportedUserId ?? null,
+      content_id: postId ?? null,
+      content_type: postId ? 'post' : 'user',
+      reason,
+    })
+  if (error) throw error
+}
+
+// ── Notifications ─────────────────────────────────────────────
+export async function getNotifications() {
+  const { data, error } = await supabase
+    .from('notifications')
+    .select(`
+      id, type, read_at, created_at,
+      from_profile:from_user_id(name, avatar_initials, avatar_url),
+      post:post_id(id, caption, emoji)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw error
+  return data ?? []
+}
+
+export async function markAllNotificationsRead() {
+  const { error } = await supabase
+    .from('notifications')
+    .update({ read_at: new Date().toISOString() })
+    .is('read_at', null)
+  if (error) throw error
+}
+
+export async function getUnreadNotificationCount() {
+  const { count } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .is('read_at', null)
+  return count ?? 0
+}
+
+// ── Account deletion ──────────────────────────────────────────
+export async function deleteAccount() {
+  // Calls a Postgres RPC that deletes profile data then signs out
+  const { error } = await supabase.rpc('delete_my_account')
+  if (error) throw error
 }

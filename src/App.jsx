@@ -1,8 +1,11 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './lib/supabase'
-import { getProfile, getUserStats, signOut, getTotalUnread } from './lib/api'
+import { getProfile, getUserStats, signOut, getTotalUnread, getUnreadNotificationCount } from './lib/api'
+import ErrorBoundary from './components/ErrorBoundary'
+import OfflineBanner from './components/OfflineBanner'
 import BottomNav from './components/BottomNav'
 import AuthScreen from './screens/AuthScreen'
+import OnboardingScreen from './screens/OnboardingScreen'
 import CardsScreen from './screens/CardsScreen'
 import CardDetail from './screens/CardDetail'
 import QRScreen from './screens/QRScreen'
@@ -49,6 +52,8 @@ export default function App() {
   const [screen, setScreen] = useState('cards')
   const [selectedCard, setSelectedCard] = useState(null)
   const [unreadMessages, setUnreadMessages] = useState(0)
+  const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [onboarded] = useState(() => !!localStorage.getItem('beened_onboarded'))
 
   // Listen for auth changes
   useEffect(() => {
@@ -86,7 +91,7 @@ export default function App() {
     load()
   }, [session])
 
-  // Poll unread message count every 30s
+  // Poll unread messages every 30s
   useEffect(() => {
     if (!session?.user) return
     function fetchUnread() {
@@ -94,6 +99,17 @@ export default function App() {
     }
     fetchUnread()
     const interval = setInterval(fetchUnread, 30000)
+    return () => clearInterval(interval)
+  }, [session])
+
+  // Poll unread notifications every 60s
+  useEffect(() => {
+    if (!session?.user) return
+    function fetchNotifCount() {
+      getUnreadNotificationCount().then(setUnreadNotifications).catch(() => {})
+    }
+    fetchNotifCount()
+    const interval = setInterval(fetchNotifCount, 60000)
     return () => clearInterval(interval)
   }, [session])
 
@@ -119,57 +135,79 @@ export default function App() {
     return (
       <div className="min-h-screen bg-stone-200 flex justify-center">
         <div className="w-full max-w-[430px] min-h-screen shadow-2xl">
-          <AuthScreen />
+          <ErrorBoundary>
+            <AuthScreen />
+          </ErrorBoundary>
+        </div>
+      </div>
+    )
+  }
+
+  // Show onboarding for first-time users
+  if (!onboarded) {
+    return (
+      <div className="min-h-screen bg-stone-200 flex justify-center">
+        <div className="w-full max-w-[430px] min-h-screen shadow-2xl">
+          <OnboardingScreen onDone={() => window.location.reload()} />
         </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-stone-200 flex justify-center items-start">
-      <div className="w-full max-w-[430px] min-h-screen bg-stone-50 relative shadow-2xl flex flex-col">
-        <StatusBar />
+    <ErrorBoundary>
+      <div className="min-h-screen bg-stone-200 flex justify-center items-start">
+        <div className="w-full max-w-[430px] min-h-screen bg-stone-50 relative shadow-2xl flex flex-col">
+          <StatusBar />
+          <OfflineBanner />
 
-        <div className="flex-1 overflow-y-auto" style={{ paddingBottom: '88px' }}>
-          {screen === 'cards' && !selectedCard && (
-            <CardsScreen
-              user={profile ?? { id: session.user.id, name: session.user.email, avatar_initials: '?' }}
-              onCardSelect={setSelectedCard}
-              onSignOut={() => signOut().catch(console.error)}
-              onProfileUpdate={handleProfileUpdate}
-            />
-          )}
-          {screen === 'cards' && selectedCard && (
-            <CardDetail
-              card={selectedCard}
-              userId={session.user.id}
-              onBack={() => setSelectedCard(null)}
-              onClaimed={handleCardClaimed}
-            />
-          )}
-          {screen === 'qr' && (
-            <QRScreen
-              user={profile ?? { id: session.user.id, name: session.user.email, username: '' }}
-              stats={stats}
-            />
-          )}
-          {screen === 'posts' && (
-            <PostsScreen user={profile ?? { id: session.user.id }} />
-          )}
-          {screen === 'messages' && (
-            <MessagesScreen user={profile ?? { id: session.user.id }} />
-          )}
-          {screen === 'discover' && (
-            <DiscoverScreen user={profile ?? { id: session.user.id }} />
-          )}
+          <div
+            data-scroll-container
+            className="flex-1 overflow-y-auto"
+            style={{ paddingBottom: '88px' }}
+          >
+            {screen === 'cards' && !selectedCard && (
+              <CardsScreen
+                user={profile ?? { id: session.user.id, name: session.user.email, avatar_initials: '?' }}
+                unreadNotifications={unreadNotifications}
+                onCardSelect={setSelectedCard}
+                onSignOut={() => signOut().catch(console.error)}
+                onProfileUpdate={handleProfileUpdate}
+                onNotificationsRead={() => setUnreadNotifications(0)}
+              />
+            )}
+            {screen === 'cards' && selectedCard && (
+              <CardDetail
+                card={selectedCard}
+                userId={session.user.id}
+                onBack={() => setSelectedCard(null)}
+                onClaimed={handleCardClaimed}
+              />
+            )}
+            {screen === 'qr' && (
+              <QRScreen
+                user={profile ?? { id: session.user.id, name: session.user.email, username: '' }}
+                stats={stats}
+              />
+            )}
+            {screen === 'posts' && (
+              <PostsScreen user={profile ?? { id: session.user.id }} />
+            )}
+            {screen === 'messages' && (
+              <MessagesScreen user={profile ?? { id: session.user.id }} />
+            )}
+            {screen === 'discover' && (
+              <DiscoverScreen user={profile ?? { id: session.user.id }} />
+            )}
+          </div>
+
+          <BottomNav
+            current={screen}
+            onChange={navigate}
+            badges={{ messages: unreadMessages }}
+          />
         </div>
-
-        <BottomNav
-          current={screen}
-          onChange={navigate}
-          badges={{ messages: unreadMessages }}
-        />
       </div>
-    </div>
+    </ErrorBoundary>
   )
 }

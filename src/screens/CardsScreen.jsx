@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react'
 import { getStampCards, getUserStats } from '../lib/api'
-import { LogOut } from 'lucide-react'
+import { Bell, Settings } from 'lucide-react'
 import Avatar from '../components/Avatar'
 import ProfileSheet from './ProfileSheet'
+import NotificationsScreen from './NotificationsScreen'
+import SettingsScreen from './SettingsScreen'
+import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh'
 
 function MiniStampGrid({ stamps, target }) {
   return (
@@ -42,29 +45,34 @@ function CardSkeleton() {
   )
 }
 
-export default function CardsScreen({ user, onCardSelect, onSignOut, onProfileUpdate }) {
+export default function CardsScreen({
+  user, unreadNotifications, onCardSelect, onSignOut, onProfileUpdate, onNotificationsRead
+}) {
   const [cards, setCards] = useState([])
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
   const [showProfile, setShowProfile] = useState(false)
+  const [showNotifications, setShowNotifications] = useState(false)
+  const [showSettings, setShowSettings] = useState(false)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [cardsData, statsData] = await Promise.all([
-          getStampCards(user.id),
-          getUserStats(user.id),
-        ])
-        setCards(cardsData)
-        setStats(statsData)
-      } catch (err) {
-        console.error(err)
-      } finally {
-        setLoading(false)
-      }
+  async function load() {
+    try {
+      const [cardsData, statsData] = await Promise.all([
+        getStampCards(user.id),
+        getUserStats(user.id),
+      ])
+      setCards(cardsData)
+      setStats(statsData)
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setLoading(false)
     }
-    load()
-  }, [user.id])
+  }
+
+  useEffect(() => { load() }, [user.id])
+
+  const { pullProgress, refreshing } = usePullToRefresh(load)
 
   const rewardReady = cards.filter(c => c.stamps >= c.cafe.stamp_target)
   const firstName = user.name?.split(' ')[0] ?? 'there'
@@ -75,6 +83,9 @@ export default function CardsScreen({ user, onCardSelect, onSignOut, onProfileUp
 
   return (
     <div className="px-4 pt-4 pb-4">
+
+      <PullIndicator pullProgress={pullProgress} refreshing={refreshing} />
+
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -82,18 +93,32 @@ export default function CardsScreen({ user, onCardSelect, onSignOut, onProfileUp
           <h1 className="text-2xl font-bold text-gray-900">{firstName} {greetingEmoji}</h1>
         </div>
         <div className="flex items-center gap-2">
+
+          {/* Notifications bell */}
           <button
-            onClick={onSignOut}
-            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
-            title="Sign out"
+            onClick={() => setShowNotifications(true)}
+            className="relative w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors active:scale-95"
           >
-            <LogOut size={18} />
+            <Bell size={19} />
+            {unreadNotifications > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 bg-rose-500 rounded-full flex items-center justify-center text-white text-[9px] font-bold px-1 animate-badge-pop">
+                {unreadNotifications > 9 ? '9+' : unreadNotifications}
+              </span>
+            )}
           </button>
-          {/* Tapping avatar opens profile */}
+
+          {/* Settings gear */}
+          <button
+            onClick={() => setShowSettings(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors active:scale-95"
+          >
+            <Settings size={19} />
+          </button>
+
+          {/* Avatar → Edit profile */}
           <button
             onClick={() => setShowProfile(true)}
             className="relative active:scale-95 transition-transform"
-            title="Edit profile"
           >
             <Avatar profile={user} size={40} />
             <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 bg-amber-500 rounded-full border-2 border-white flex items-center justify-center">
@@ -212,7 +237,7 @@ export default function CardsScreen({ user, onCardSelect, onSignOut, onProfileUp
         </div>
       )}
 
-      {/* Profile sheet */}
+      {/* Sheets */}
       {showProfile && (
         <ProfileSheet
           profile={user}
@@ -222,6 +247,22 @@ export default function CardsScreen({ user, onCardSelect, onSignOut, onProfileUp
             onProfileUpdate?.(updated)
             setShowProfile(false)
           }}
+        />
+      )}
+
+      {showNotifications && (
+        <NotificationsScreen
+          onClose={() => setShowNotifications(false)}
+          onUnreadChange={onNotificationsRead}
+        />
+      )}
+
+      {showSettings && (
+        <SettingsScreen
+          profile={user}
+          onClose={() => setShowSettings(false)}
+          onSignOut={onSignOut}
+          onProfileUpdate={onProfileUpdate}
         />
       )}
     </div>

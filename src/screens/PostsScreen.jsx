@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Heart, MessageCircle, Plus, X, Send, Users, Trash2, ImagePlus } from 'lucide-react'
+import { Heart, MessageCircle, Plus, X, Send, Users, Trash2, ImagePlus, Share2 } from 'lucide-react'
 import Avatar from '../components/Avatar'
 import {
   getPosts, getFriendsPosts, createPost, uploadPostMedia,
@@ -9,6 +9,8 @@ import {
 import CommentsSheet from './CommentsSheet'
 import FriendsSheet from './FriendsSheet'
 import UserProfileSheet from './UserProfileSheet'
+import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh'
+import { haptic } from '../utils/haptic'
 
 const EMOJIS = ['☕', '🧋', '🍵', '🥐', '🍰', '🏆', '✨', '🌟', '💛', '🫶']
 
@@ -18,6 +20,19 @@ function timeAgo(ts) {
   if (secs < 3600) return `${Math.floor(secs / 60)}m ago`
   if (secs < 86400) return `${Math.floor(secs / 3600)}h ago`
   return `${Math.floor(secs / 86400)}d ago`
+}
+
+async function sharePost(post) {
+  const text = post.caption
+    ? `"${post.caption}" — ${post.profile?.name} on Beened ☕`
+    : `${post.profile?.name} is on Beened ☕`
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: 'Beened', text, url: window.location.href })
+    } else {
+      await navigator.clipboard.writeText(text)
+    }
+  } catch {}
 }
 
 // ── Compose sheet ──────────────────────────────────────────────
@@ -80,6 +95,7 @@ function ComposeSheet({ userId, onClose, onPosted }) {
         mediaUrl,
         mediaType,
       })
+      haptic(15)
       onPosted()
       onClose()
     } catch (err) {
@@ -205,15 +221,19 @@ export default function PostsScreen({ user }) {
   const [composing, setComposing] = useState(false)
   const [showFriends, setShowFriends] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
-  const [viewingProfile, setViewingProfile] = useState(null) // userId
-  const [likedAnim, setLikedAnim] = useState({}) // postId -> bool for heart pop
+  const [viewingProfile, setViewingProfile] = useState(null)
+  const [likedAnim, setLikedAnim] = useState({})
+  const [copiedId, setCopiedId] = useState(null) // shows "Copied!" toast
 
   const userId = user?.id
+  const feedRef = useRef(feed)
+  feedRef.current = feed
 
   async function load(activeFeed) {
     setLoading(true)
     try {
-      const data = activeFeed === 'friends' ? await getFriendsPosts() : await getPosts()
+      const af = activeFeed ?? feedRef.current
+      const data = af === 'friends' ? await getFriendsPosts() : await getPosts()
       setPosts(data)
       if (data.length) {
         const myLikes = await getMyLikes(data.map(p => p.id))
@@ -240,11 +260,14 @@ export default function PostsScreen({ user }) {
       .catch(() => {})
   }, [])
 
+  const { pullProgress, refreshing } = usePullToRefresh(() => load())
+
   async function handleLike(postId) {
     const isLiked = !!liked[postId]
     setLiked(prev => ({ ...prev, [postId]: !isLiked }))
     setPosts(prev => prev.map(p => p.id === postId ? { ...p, likes_count: p.likes_count + (isLiked ? -1 : 1) } : p))
     if (!isLiked) {
+      haptic(10)
       setLikedAnim(prev => ({ ...prev, [postId]: true }))
       setTimeout(() => setLikedAnim(prev => ({ ...prev, [postId]: false })), 400)
     }
@@ -263,8 +286,25 @@ export default function PostsScreen({ user }) {
     finally { setConfirmDeleteId(null) }
   }
 
+  async function handleShare(post) {
+    const text = post.caption
+      ? `"${post.caption}" — ${post.profile?.name} on Beened ☕`
+      : `${post.profile?.name} is on Beened ☕`
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Beened', text, url: window.location.href })
+      } else {
+        await navigator.clipboard.writeText(text)
+        setCopiedId(post.id)
+        setTimeout(() => setCopiedId(null), 2000)
+      }
+    } catch {}
+  }
+
   return (
     <div className="px-4 pt-4 pb-4">
+
+      <PullIndicator pullProgress={pullProgress} refreshing={refreshing} />
 
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
@@ -457,6 +497,17 @@ export default function PostsScreen({ user }) {
                       <MessageCircle size={20} className="text-gray-300" />
                       <span className="text-sm font-medium text-gray-400">{post.comments_count ?? 0}</span>
                     </button>
+                    {/* Share button */}
+                    <button
+                      onClick={() => handleShare(post)}
+                      className="flex items-center gap-1.5 ml-auto"
+                    >
+                      {copiedId === post.id ? (
+                        <span className="text-xs text-emerald-500 font-semibold">Copied!</span>
+                      ) : (
+                        <Share2 size={18} className="text-gray-300" />
+                      )}
+                    </button>
                   </div>
                 </div>
               </div>
@@ -467,7 +518,7 @@ export default function PostsScreen({ user }) {
 
       {/* Sheets */}
       {composing && (
-        <ComposeSheet userId={userId} onClose={() => setComposing(false)} onPosted={() => load(feed)} />
+        <ComposeSheet userId={userId} onClose={() => setComposing(false)} onPosted={() => load()} />
       )}
       {commentsPost && (
         <CommentsSheet
