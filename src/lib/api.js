@@ -457,6 +457,16 @@ export async function markMessagesRead(conversationId) {
     .is('read_at', null)
 }
 
+export async function deleteConversation(conversationId) {
+  // Delete messages first in case FK has no CASCADE
+  await supabase.from('messages').delete().eq('conversation_id', conversationId)
+  const { error } = await supabase
+    .from('conversations')
+    .delete()
+    .eq('id', conversationId)
+  if (error) throw error
+}
+
 export async function getTotalUnread() {
   const { count } = await supabase
     .from('messages')
