@@ -8,6 +8,7 @@ import {
 } from '../lib/api'
 import CommentsSheet from './CommentsSheet'
 import FriendsSheet from './FriendsSheet'
+import UserProfileSheet from './UserProfileSheet'
 
 const EMOJIS = ['☕', '🧋', '🍵', '🥐', '🍰', '🏆', '✨', '🌟', '💛', '🫶']
 
@@ -204,6 +205,7 @@ export default function PostsScreen({ user }) {
   const [composing, setComposing] = useState(false)
   const [showFriends, setShowFriends] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
+  const [viewingProfile, setViewingProfile] = useState(null) // userId
 
   const userId = user?.id
 
@@ -368,13 +370,16 @@ export default function PostsScreen({ user }) {
 
                 {/* Post header */}
                 <div className="flex items-center justify-between px-3.5 pt-3.5 pb-2.5">
-                  <div className="flex items-center gap-2.5">
+                  <button
+                    className="flex items-center gap-2.5 text-left active:opacity-70 transition-opacity"
+                    onClick={() => post.user_id !== userId && setViewingProfile(post.user_id)}
+                  >
                     <Avatar profile={post.profile} size={36} />
                     <div>
                       <p className="text-sm font-semibold text-gray-900 leading-tight">{post.profile?.name ?? 'Someone'}</p>
                       <p className="text-xs text-gray-400">{post.cafe?.name ?? 'a cafe'} · {timeAgo(post.created_at)}</p>
                     </div>
-                  </div>
+                  </button>
                   <div className="flex items-center gap-2 ml-2 flex-shrink-0">
                     {post.stamp_label && (
                       <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
@@ -467,6 +472,13 @@ export default function PostsScreen({ user }) {
       )}
       {showFriends && (
         <FriendsSheet onClose={() => setShowFriends(false)} onPendingChange={setPendingCount} />
+      )}
+      {viewingProfile && (
+        <UserProfileSheet
+          userId={viewingProfile}
+          myId={userId}
+          onClose={() => setViewingProfile(null)}
+        />
       )}
     </div>
   )

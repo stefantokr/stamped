@@ -336,6 +336,16 @@ export async function withdrawRequest(friendshipId) {
   if (error) throw error
 }
 
+export async function getFriendshipWith(otherUserId) {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data } = await supabase
+    .from('friendships')
+    .select('id, status, requester_id, addressee_id')
+    .or(`and(requester_id.eq.${user.id},addressee_id.eq.${otherUserId}),and(requester_id.eq.${otherUserId},addressee_id.eq.${user.id})`)
+    .maybeSingle()
+  return { friendship: data, myId: user.id }
+}
+
 // ── Comments ──────────────────────────────────────────────────
 export async function getComments(postId) {
   const { data, error } = await supabase
