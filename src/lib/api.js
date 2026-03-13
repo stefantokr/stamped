@@ -192,6 +192,31 @@ export async function getPosts() {
   return data
 }
 
+export async function getFriendsPosts() {
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: friendships } = await supabase
+    .from('friendships')
+    .select('requester_id, addressee_id')
+    .eq('status', 'accepted')
+    .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+  const friendIds = (friendships ?? []).map(f =>
+    f.requester_id === user.id ? f.addressee_id : f.requester_id
+  )
+  if (!friendIds.length) return []
+  const { data, error } = await supabase
+    .from('posts')
+    .select(`
+      *,
+      profile:profiles(name, avatar_initials, avatar_url),
+      cafe:cafes(name, color, logo_letter)
+    `)
+    .in('user_id', friendIds)
+    .order('created_at', { ascending: false })
+    .limit(50)
+  if (error) throw error
+  return data
+}
+
 export async function createPost({ cafeId, caption, emoji, stampLabel, isReward, mediaUrl, mediaType }) {
   const { data: { user } } = await supabase.auth.getUser()
   const { data, error } = await supabase

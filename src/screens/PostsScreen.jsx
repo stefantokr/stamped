@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { Heart, MessageCircle, Plus, X, Send, Users, Trash2, ImagePlus } from 'lucide-react'
 import Avatar from '../components/Avatar'
 import {
-  getPosts, createPost, uploadPostMedia,
+  getPosts, getFriendsPosts, createPost, uploadPostMedia,
   getMyLikes, toggleLike, deletePost,
   getStampCards, getMyFriendships,
 } from '../lib/api'
@@ -195,6 +195,7 @@ function ComposeSheet({ userId, onClose, onPosted }) {
 
 // ── Main Posts screen ──────────────────────────────────────────
 export default function PostsScreen({ user }) {
+  const [feed, setFeed] = useState('everyone') // 'everyone' | 'friends'
   const [posts, setPosts] = useState([])
   const [liked, setLiked] = useState({})
   const [loading, setLoading] = useState(true)
@@ -206,10 +207,10 @@ export default function PostsScreen({ user }) {
 
   const userId = user?.id
 
-  async function load() {
+  async function load(activeFeed) {
     setLoading(true)
     try {
-      const data = await getPosts()
+      const data = activeFeed === 'friends' ? await getFriendsPosts() : await getPosts()
       setPosts(data)
       if (data.length) {
         const myLikes = await getMyLikes(data.map(p => p.id))
@@ -221,8 +222,14 @@ export default function PostsScreen({ user }) {
     finally { setLoading(false) }
   }
 
+  function switchFeed(newFeed) {
+    setFeed(newFeed)
+    setPosts([])
+    load(newFeed)
+  }
+
   useEffect(() => {
-    load()
+    load('everyone')
     getMyFriendships()
       .then(({ friendships, myId }) => {
         setPendingCount(friendships.filter(f => f.status === 'pending' && f.addressee_id === myId).length)
@@ -276,6 +283,26 @@ export default function PostsScreen({ user }) {
         </div>
       </div>
 
+      {/* Feed tabs */}
+      <div className="flex bg-gray-100 rounded-2xl p-1 mb-5">
+        {[
+          { id: 'everyone', label: '🌍 Everyone' },
+          { id: 'friends',  label: '👥 Friends'  },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => switchFeed(tab.id)}
+            className={`flex-1 py-2 rounded-xl text-sm font-semibold transition-all ${
+              feed === tab.id
+                ? 'bg-white text-gray-900 shadow-sm'
+                : 'text-gray-400'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {/* Feed */}
       {loading ? (
         <div className="flex flex-col gap-4">
@@ -295,15 +322,30 @@ export default function PostsScreen({ user }) {
         </div>
       ) : posts.length === 0 ? (
         <div className="text-center py-20 text-gray-400">
-          <div className="text-5xl mb-4">☕</div>
-          <p className="text-sm font-medium">No posts yet</p>
-          <p className="text-xs mt-1 mb-6">Be the first to share a moment!</p>
-          <button
-            onClick={() => setComposing(true)}
-            className="bg-amber-500 text-white text-sm font-bold px-6 py-3 rounded-2xl"
-          >
-            Share a moment
-          </button>
+          <div className="text-5xl mb-4">{feed === 'friends' ? '👥' : '☕'}</div>
+          {feed === 'friends' ? (
+            <>
+              <p className="text-sm font-medium">No friends posts yet</p>
+              <p className="text-xs mt-1 mb-6">Add friends to see their posts here!</p>
+              <button
+                onClick={() => setShowFriends(true)}
+                className="bg-amber-500 text-white text-sm font-bold px-6 py-3 rounded-2xl"
+              >
+                Find Friends
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm font-medium">No posts yet</p>
+              <p className="text-xs mt-1 mb-6">Be the first to share a moment!</p>
+              <button
+                onClick={() => setComposing(true)}
+                className="bg-amber-500 text-white text-sm font-bold px-6 py-3 rounded-2xl"
+              >
+                Share a moment
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-4">
@@ -411,7 +453,7 @@ export default function PostsScreen({ user }) {
 
       {/* Sheets */}
       {composing && (
-        <ComposeSheet userId={userId} onClose={() => setComposing(false)} onPosted={load} />
+        <ComposeSheet userId={userId} onClose={() => setComposing(false)} onPosted={() => load(feed)} />
       )}
       {commentsPost && (
         <CommentsSheet
