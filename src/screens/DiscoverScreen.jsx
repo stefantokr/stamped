@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
-import { MapPin, Navigation } from 'lucide-react'
+import { MapPin, Navigation, Search, X } from 'lucide-react'
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { deals } from '../data/mockData'
-import { getStampCards, getCafes, getFriendsActivity } from '../lib/api'
+import { getStampCards, getCafes, getFriendsActivity, searchCafes, searchUsers } from '../lib/api'
 import Avatar from '../components/Avatar'
+import CafeProfileSheet from './CafeProfileSheet'
+import UserProfileSheet from './UserProfileSheet'
 
 // ── Helpers ────────────────────────────────────────────────────
 function timeAgo(ts) {
@@ -107,8 +109,106 @@ function FlyTo({ pos }) {
   return null
 }
 
+// ── Search results panel ───────────────────────────────────────
+function SearchResultsPanel({ query, onCafePress, onUserPress }) {
+  const [cafes, setCafes] = useState([])
+  const [users, setUsers] = useState([])
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    const trimmed = query.trim()
+    if (!trimmed) { setCafes([]); setUsers([]); return }
+    setLoading(true)
+    const t = setTimeout(() => {
+      Promise.all([searchCafes(trimmed), searchUsers(trimmed)])
+        .then(([c, u]) => { setCafes(c); setUsers(u) })
+        .catch(console.error)
+        .finally(() => setLoading(false))
+    }, 350)
+    return () => clearTimeout(t)
+  }, [query])
+
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-2 mt-1">
+        {[1, 2, 3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}
+      </div>
+    )
+  }
+
+  if (!cafes.length && !users.length) {
+    return (
+      <div className="text-center py-16 text-gray-400">
+        <p className="text-4xl mb-3">🔍</p>
+        <p className="text-sm font-medium text-gray-500">No results for "{query}"</p>
+        <p className="text-xs mt-1">Try searching for a cafe name or person</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-col gap-5 mt-1">
+      {cafes.length > 0 && (
+        <section>
+          <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+            Cafes on Beened
+          </h3>
+          <div className="flex flex-col gap-2">
+            {cafes.map(cafe => (
+              <button
+                key={cafe.id}
+                onClick={() => onCafePress(cafe)}
+                className="flex items-center gap-3 bg-white rounded-2xl p-3.5 shadow-sm border border-gray-50 w-full text-left active:scale-[0.98] transition-transform"
+              >
+                <div
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
+                  style={{ backgroundColor: cafe.color ?? '#F59E0B' }}
+                >
+                  {cafe.logo_letter ?? '☕'}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{cafe.name}</p>
+                  {cafe.address
+                    ? <p className="text-xs text-gray-400 truncate">{cafe.address}</p>
+                    : <p className="text-xs text-amber-600 font-medium">✦ Beened</p>
+                  }
+                </div>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs font-semibold text-amber-600">{cafe.stamp_target} stamps</p>
+                  <p className="text-[10px] text-gray-400">to reward</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {users.length > 0 && (
+        <section>
+          <h3 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">People</h3>
+          <div className="flex flex-col gap-2">
+            {users.map(u => (
+              <button
+                key={u.id}
+                onClick={() => onUserPress(u.id)}
+                className="flex items-center gap-3 bg-white rounded-2xl p-3.5 shadow-sm border border-gray-50 w-full text-left active:scale-[0.98] transition-transform"
+              >
+                <Avatar profile={u} size={40} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900">{u.name}</p>
+                  {u.username && <p className="text-xs text-gray-400">@{u.username}</p>}
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
+    </div>
+  )
+}
+
 // ── Nearby tab ─────────────────────────────────────────────────
-function NearbyTab({ userId }) {
+function NearbyTab({ userId, onCafePress }) {
   const [userPos, setUserPos] = useState(null)
   const [geoStatus, setGeoStatus] = useState('loading')
   const [stampedCafes, setStampedCafes] = useState([])
@@ -159,7 +259,7 @@ function NearbyTab({ userId }) {
   const myCards = stampedWithDist.filter(c => cardByCafeId[c.id])
   const otherStamped = stampedWithDist.filter(c => !cardByCafeId[c.id])
 
-  const DEFAULT_CENTER = [51.505, -0.09]
+  const DEFAULT_CENTER = [51.752, -1.257] // Oxford
   const mapCenter = userPos ? [userPos.lat, userPos.lng] : DEFAULT_CENTER
 
   if (dataLoading) {
@@ -185,7 +285,8 @@ function NearbyTab({ userId }) {
           )}
           {stampedWithDist.map(cafe => (
             <Marker key={cafe.id} position={[cafe.latitude, cafe.longitude]}
-              icon={makeStampedIcon(cafe.color ?? '#F59E0B', cafe.logo_letter ?? '☕')}>
+              icon={makeStampedIcon(cafe.color ?? '#F59E0B', cafe.logo_letter ?? '☕')}
+              eventHandlers={{ click: () => onCafePress(cafe) }}>
               <Popup>
                 <div>
                   <p className="font-semibold text-sm">{cafe.name}</p>
@@ -253,7 +354,11 @@ function NearbyTab({ userId }) {
               const card = cardByCafeId[cafe.id]
               const isReady = card.stamps >= cafe.stamp_target
               return (
-                <div key={cafe.id} className="flex items-center justify-between bg-white rounded-2xl p-3.5 shadow-sm border border-gray-50">
+                <button
+                  key={cafe.id}
+                  onClick={() => onCafePress(cafe)}
+                  className="flex items-center justify-between bg-white rounded-2xl p-3.5 shadow-sm border border-gray-50 w-full text-left active:scale-[0.98] transition-transform"
+                >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                       style={{ backgroundColor: cafe.color }}>{cafe.logo_letter}</div>
@@ -270,7 +375,7 @@ function NearbyTab({ userId }) {
                       <p className="text-xs text-gray-400">stamps</p>
                     </div>
                   )}
-                </div>
+                </button>
               )
             })}
           </div>
@@ -285,7 +390,11 @@ function NearbyTab({ userId }) {
           </div>
           <div className="flex flex-col gap-2">
             {otherStamped.map(cafe => (
-              <div key={cafe.id} className="flex items-center justify-between bg-white rounded-2xl p-3.5 shadow-sm border border-gray-50">
+              <button
+                key={cafe.id}
+                onClick={() => onCafePress(cafe)}
+                className="flex items-center justify-between bg-white rounded-2xl p-3.5 shadow-sm border border-gray-50 w-full text-left active:scale-[0.98] transition-transform"
+              >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                     style={{ backgroundColor: cafe.color }}>{cafe.logo_letter}</div>
@@ -298,7 +407,7 @@ function NearbyTab({ userId }) {
                   <p className="text-xs text-amber-600 font-semibold">{cafe.stamp_target} stamps</p>
                   <p className="text-xs text-gray-400">{cafe.reward_description}</p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -520,23 +629,60 @@ const TABS = [
 
 export default function DiscoverScreen({ user }) {
   const [activeTab, setActiveTab] = useState('foryou')
+  const [query, setQuery] = useState('')
+  const [selectedCafe, setSelectedCafe] = useState(null)
+  const [selectedUserId, setSelectedUserId] = useState(null)
 
   return (
     <div className="px-4 pt-4 pb-4">
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-gray-900">Discover</h1>
       </div>
-      <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5">
-        {TABS.map(tab => (
-          <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
-              activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
-            }`}>{tab.label}</button>
-        ))}
+
+      {/* Search bar */}
+      <div className="relative mb-4">
+        <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        <input
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          placeholder="Search cafes or people…"
+          className="w-full pl-9 pr-9 py-2.5 bg-white border border-gray-200 rounded-2xl text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 shadow-sm"
+        />
+        {query ? (
+          <button onClick={() => setQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 active:text-gray-600">
+            <X size={16} />
+          </button>
+        ) : null}
       </div>
-      {activeTab === 'foryou' && <ForYouTab />}
-      {activeTab === 'nearby' && <NearbyTab userId={user?.id} />}
-      {activeTab === 'deals' && <DealsTab />}
+
+      {query ? (
+        <SearchResultsPanel
+          query={query}
+          onCafePress={setSelectedCafe}
+          onUserPress={setSelectedUserId}
+        />
+      ) : (
+        <>
+          <div className="flex gap-1 bg-gray-100 rounded-xl p-1 mb-5">
+            {TABS.map(tab => (
+              <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all ${
+                  activeTab === tab.id ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'
+                }`}>{tab.label}</button>
+            ))}
+          </div>
+          {activeTab === 'foryou' && <ForYouTab />}
+          {activeTab === 'nearby' && <NearbyTab userId={user?.id} onCafePress={setSelectedCafe} />}
+          {activeTab === 'deals' && <DealsTab />}
+        </>
+      )}
+
+      {selectedCafe && (
+        <CafeProfileSheet cafe={selectedCafe} onClose={() => setSelectedCafe(null)} />
+      )}
+      {selectedUserId && (
+        <UserProfileSheet userId={selectedUserId} myId={user?.id} onClose={() => setSelectedUserId(null)} />
+      )}
     </div>
   )
 }

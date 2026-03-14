@@ -9,6 +9,7 @@ import {
 import CommentsSheet from './CommentsSheet'
 import FriendsSheet from './FriendsSheet'
 import UserProfileSheet from './UserProfileSheet'
+import CafeProfileSheet from './CafeProfileSheet'
 import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh.jsx'
 import { haptic } from '../utils/haptic'
 
@@ -222,6 +223,7 @@ export default function PostsScreen({ user }) {
   const [showFriends, setShowFriends] = useState(false)
   const [pendingCount, setPendingCount] = useState(0)
   const [viewingProfile, setViewingProfile] = useState(null)
+  const [viewingCafeId, setViewingCafeId] = useState(null)
   const [likedAnim, setLikedAnim] = useState({})
   const [copiedId, setCopiedId] = useState(null) // shows "Copied!" toast
 
@@ -424,7 +426,15 @@ export default function PostsScreen({ user }) {
                     <Avatar profile={post.profile} size={36} />
                     <div>
                       <p className="text-sm font-semibold text-gray-900 leading-tight">{post.profile?.name ?? 'Someone'}</p>
-                      <p className="text-xs text-gray-400">{post.cafe?.name ?? 'a cafe'} · {timeAgo(post.created_at)}</p>
+                      <p className="text-xs text-gray-400">
+                        {post.cafe && post.cafe_id ? (
+                          <button
+                            onClick={e => { e.stopPropagation(); setViewingCafeId(post.cafe_id) }}
+                            className="font-medium text-amber-600 active:opacity-70"
+                          >{post.cafe.name}</button>
+                        ) : (post.cafe?.name ?? 'a cafe')}
+                        {' · '}{timeAgo(post.created_at)}
+                      </p>
                     </div>
                   </button>
                   <div className="flex items-center gap-2 ml-2 flex-shrink-0">
@@ -538,6 +548,12 @@ export default function PostsScreen({ user }) {
           userId={viewingProfile}
           myId={userId}
           onClose={() => setViewingProfile(null)}
+        />
+      )}
+      {viewingCafeId && (
+        <CafeProfileSheet
+          cafeId={viewingCafeId}
+          onClose={() => setViewingCafeId(null)}
         />
       )}
     </div>

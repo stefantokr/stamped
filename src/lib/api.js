@@ -48,6 +48,35 @@ export async function getCafes() {
   return data
 }
 
+export async function searchCafes(query) {
+  const { data, error } = await supabase
+    .from('cafes')
+    .select('*')
+    .ilike('name', `%${query}%`)
+    .order('name')
+    .limit(20)
+  if (error) throw error
+  return data
+}
+
+export async function getCafeDetails(cafeId) {
+  const { data, error } = await supabase
+    .from('cafes')
+    .select('*')
+    .eq('id', cafeId)
+    .single()
+  if (error) throw error
+  return data
+}
+
+export async function getCafeMemberCount(cafeId) {
+  const { count } = await supabase
+    .from('stamp_cards')
+    .select('id', { count: 'exact', head: true })
+    .eq('cafe_id', cafeId)
+  return count ?? 0
+}
+
 // ── Staff: only cafes this user is assigned to ────────────────
 export async function getAssignedCafes() {
   const { data, error } = await supabase

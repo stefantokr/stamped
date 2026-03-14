@@ -7,39 +7,103 @@ import NotificationsScreen from './NotificationsScreen'
 import SettingsScreen from './SettingsScreen'
 import { usePullToRefresh, PullIndicator } from '../hooks/usePullToRefresh.jsx'
 
-function MiniStampGrid({ stamps, target }) {
+const CARD_HEIGHT = 188
+const PEEK = 72
+
+function StampCard({ card, onClick }) {
+  const isReady = card.stamps >= card.cafe.stamp_target
+  const progress = card.stamps / card.cafe.stamp_target
+  const color = card.cafe.color ?? '#F59E0B'
+
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {Array.from({ length: target }).map((_, i) => (
-        <div
-          key={i}
-          className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] transition-all ${
-            i < stamps
-              ? 'bg-amber-500 text-white shadow-sm'
-              : 'bg-gray-100 border border-gray-200'
-          }`}
-        >
-          {i < stamps ? '☕' : ''}
+    <button
+      onClick={onClick}
+      className="w-full text-left overflow-hidden active:brightness-90 transition-all"
+      style={{ backgroundColor: color, height: CARD_HEIGHT, borderRadius: 28 }}
+    >
+      <div className="flex flex-col h-full px-5 py-4">
+
+        {/* Header — visible when peeking */}
+        <div className="flex items-start justify-between">
+          <div className="flex-1 min-w-0 pr-3">
+            <p className="text-white/55 text-[9px] font-bold uppercase tracking-[0.14em] mb-1">
+              Loyalty Card
+            </p>
+            <h2 className="text-white font-bold text-[18px] leading-tight truncate">
+              {card.cafe.name}
+            </h2>
+          </div>
+          <div
+            className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center font-bold text-white text-lg flex-shrink-0"
+          >
+            {card.cafe.logo_letter}
+          </div>
         </div>
-      ))}
-    </div>
+
+        {/* Divider */}
+        <div className="h-px bg-white/15 mt-3 mb-3" />
+
+        {/* Stamps grid */}
+        <div className="flex flex-wrap gap-1.5">
+          {Array.from({ length: card.cafe.stamp_target }).map((_, i) => (
+            <div
+              key={i}
+              className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] ${
+                i < card.stamps ? 'bg-white shadow-sm' : 'bg-white/20'
+              }`}
+            >
+              {i < card.stamps ? '☕' : ''}
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-auto pt-2">
+          {isReady ? (
+            <div className="flex items-center justify-between">
+              <span className="text-white text-xs font-semibold">🏆 {card.cafe.reward_description}</span>
+              <span className="bg-white/25 text-white text-[11px] font-bold px-3 py-1 rounded-full">
+                Claim →
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className="h-1 bg-white/20 rounded-full overflow-hidden mb-1.5">
+                <div
+                  className="h-full bg-white/65 rounded-full"
+                  style={{ width: `${progress * 100}%` }}
+                />
+              </div>
+              <p className="text-white/55 text-[11px]">
+                {card.cafe.stamp_target - card.stamps} more for {card.cafe.reward_description}
+              </p>
+            </>
+          )}
+        </div>
+      </div>
+    </button>
   )
 }
 
-function CardSkeleton() {
+function SkeletonCard({ idx }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 animate-pulse">
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-11 h-11 rounded-xl bg-gray-200" />
-        <div className="flex-1">
-          <div className="h-3.5 bg-gray-200 rounded w-32 mb-1.5" />
-          <div className="h-3 bg-gray-100 rounded w-20" />
+    <div
+      className="w-full overflow-hidden animate-pulse"
+      style={{
+        backgroundColor: ['#D4A96A', '#8FAF8B', '#C4907A'][idx % 3],
+        height: CARD_HEIGHT,
+        borderRadius: 28,
+        opacity: 0.45,
+      }}
+    >
+      <div className="flex flex-col h-full px-5 py-4">
+        <div className="flex items-start justify-between">
+          <div className="flex-1">
+            <div className="h-2 bg-white/40 rounded w-16 mb-2" />
+            <div className="h-5 bg-white/50 rounded w-40" />
+          </div>
+          <div className="w-11 h-11 rounded-2xl bg-white/25" />
         </div>
-      </div>
-      <div className="flex gap-1.5">
-        {Array.from({ length: 9 }).map((_, i) => (
-          <div key={i} className="w-6 h-6 rounded-full bg-gray-100" />
-        ))}
       </div>
     </div>
   )
@@ -81,6 +145,10 @@ export default function CardsScreen({
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const greetingEmoji = hour < 12 ? '☀️' : hour < 17 ? '🌤️' : '🌙'
 
+  const skeletonCount = 3
+  const stackCount = loading ? skeletonCount : cards.length
+  const stackHeight = stackCount > 0 ? CARD_HEIGHT + (stackCount - 1) * PEEK : 0
+
   return (
     <div className="px-4 pt-4 pb-4">
 
@@ -94,7 +162,6 @@ export default function CardsScreen({
         </div>
         <div className="flex items-center gap-2">
 
-          {/* Notifications bell */}
           <button
             onClick={() => setShowNotifications(true)}
             className="relative w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors active:scale-95"
@@ -107,7 +174,6 @@ export default function CardsScreen({
             )}
           </button>
 
-          {/* Settings gear */}
           <button
             onClick={() => setShowSettings(true)}
             className="w-9 h-9 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors active:scale-95"
@@ -115,7 +181,6 @@ export default function CardsScreen({
             <Settings size={19} />
           </button>
 
-          {/* Avatar → Edit profile */}
           <button
             onClick={() => setShowProfile(true)}
             className="relative active:scale-95 transition-transform"
@@ -165,75 +230,41 @@ export default function CardsScreen({
         </div>
       )}
 
-      {/* Cards list */}
+      {/* Cards label */}
       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Your Cards</p>
 
-      {loading ? (
-        <div className="flex flex-col gap-3">
-          {[1, 2, 3].map(i => <CardSkeleton key={i} />)}
-        </div>
-      ) : cards.length === 0 ? (
+      {/* Empty state */}
+      {!loading && cards.length === 0 && (
         <div className="text-center py-12 text-gray-400">
           <div className="text-4xl mb-3">☕</div>
           <p className="text-sm font-medium">No stamp cards yet</p>
           <p className="text-xs mt-1">Visit a cafe and show your QR code to get started</p>
         </div>
-      ) : (
-        <div className="flex flex-col gap-3">
-          {cards.map(card => {
-            const isReady = card.stamps >= card.cafe.stamp_target
-            const lastVisit = card.last_visit
-              ? new Date(card.last_visit).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })
-              : 'Not visited yet'
+      )}
 
-            return (
-              <button
-                key={card.id}
-                onClick={() => onCardSelect(card)}
-                className="w-full text-left bg-white rounded-2xl border border-gray-100 shadow-sm p-4 active:scale-[0.98] transition-transform"
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div
-                      className="w-11 h-11 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-sm"
-                      style={{ backgroundColor: card.cafe.color }}
-                    >
-                      {card.cafe.logo_letter}
-                    </div>
-                    <div>
-                      <div className="font-semibold text-gray-900 text-sm leading-tight">{card.cafe.name}</div>
-                      <div className="text-xs text-gray-400 mt-0.5">{lastVisit}</div>
-                    </div>
-                  </div>
-                  {isReady ? (
-                    <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-full">
-                      🏆 Ready!
-                    </span>
-                  ) : (
-                    <span className="text-xs font-bold text-gray-400">
-                      {card.stamps}/{card.cafe.stamp_target}
-                    </span>
-                  )}
+      {/* Stacked cards */}
+      {stackCount > 0 && (
+        <div className="relative" style={{ height: stackHeight }}>
+          {loading
+            ? Array.from({ length: skeletonCount }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className="absolute left-0 right-0"
+                  style={{ top: idx * PEEK, zIndex: idx + 1 }}
+                >
+                  <SkeletonCard idx={idx} />
                 </div>
-
-                <MiniStampGrid stamps={card.stamps} target={card.cafe.stamp_target} />
-
-                {!isReady && (
-                  <div className="mt-3">
-                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full"
-                        style={{ width: `${(card.stamps / card.cafe.stamp_target) * 100}%` }}
-                      />
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1.5">
-                      {card.cafe.stamp_target - card.stamps} more for {card.cafe.reward_description}
-                    </p>
-                  </div>
-                )}
-              </button>
-            )
-          })}
+              ))
+            : cards.map((card, idx) => (
+                <div
+                  key={card.id}
+                  className="absolute left-0 right-0"
+                  style={{ top: idx * PEEK, zIndex: idx + 1 }}
+                >
+                  <StampCard card={card} onClick={() => onCardSelect(card)} />
+                </div>
+              ))
+          }
         </div>
       )}
 
