@@ -15,10 +15,11 @@ import MessagesScreen from './screens/MessagesScreen'
 
 function StatusBar() {
   return (
-    <div className="px-6 pt-3 pb-1 flex justify-between items-center text-xs font-semibold text-gray-800 bg-white sticky top-0 z-10 border-b border-gray-100">
-      <span>9:41</span>
-      <div className="flex items-center gap-1.5 text-gray-600">
-        <span className="text-[10px] tracking-tight">●●●</span>
+    <div className="px-6 pt-3 pb-1.5 flex justify-between items-center text-xs font-semibold sticky top-0 z-10"
+      style={{ background: '#FAF8F4', color: '#1a1a1a' }}>
+      <span className="font-bold tracking-tight">9:41</span>
+      <div className="flex items-center gap-1.5" style={{ color: '#555' }}>
+        <span className="text-[10px]">●●●</span>
         <svg width="16" height="12" viewBox="0 0 16 12" fill="none">
           <rect x="1" y="4" width="2" height="8" rx="0.5" fill="currentColor" opacity="0.3"/>
           <rect x="5" y="2.5" width="2" height="9.5" rx="0.5" fill="currentColor" opacity="0.5"/>
@@ -157,7 +158,7 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-stone-200 flex justify-center items-start">
-        <div className="w-full max-w-[430px] min-h-screen bg-stone-50 relative shadow-2xl flex flex-col">
+        <div className="w-full max-w-[430px] min-h-screen relative shadow-2xl flex flex-col" style={{ background: '#FAF8F4' }}>
           <StatusBar />
           <OfflineBanner />
 
